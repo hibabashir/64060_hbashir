@@ -1,0 +1,33 @@
+---
+title: "Assignment 1"
+author: "Hiba Bashir"
+output: html_document
+---
+
+# 1. Load Dataset
+
+```{r}
+df <- iris
+head(df)
+summary(df$Sepal.Length)
+summary(df$Sepal.Width)
+summary(df$Petal.Length)
+summary(df$Petal.Width)
+table(df$Species)
+df$Size <- ifelse(df$Petal.Length > 3, "Large", "Small")
+table(df$Size)
+hist(df$Petal.Length,
+     col="lightblue",
+     main="Petal Length Distribution",
+     xlab="Petal Length")
+plot(df$Sepal.Length,
+     df$Petal.Length,
+     col="blue",
+     pch=19,
+     main="Sepal Length vs Petal Length",
+     xlab="Sepal Length",
+   
+
+summary(df)
+
+
