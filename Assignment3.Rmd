@@ -1,0 +1,158 @@
+---
+title: "Assignment 3"
+author: "Hiba Bashir"
+output: html_document
+---
+
+## Assignment 3: Naive Bayes Classification
+
+This assignment uses the Universal Bank data. The goal is to predict whether a customer accepts a personal loan offer using two predictors: Online banking use and Credit Card ownership.
+
+```{r}
+library(e1071)
+```
+
+## Load the Data
+
+```{r}
+bank <- read.csv(file.choose())
+
+bank2 <- bank[, c("Online", "CreditCard", "Personal.Loan")]
+
+names(bank2) <- c("Online", "CC", "Loan")
+
+bank2$Online <- factor(bank2$Online)
+bank2$CC <- factor(bank2$CC)
+bank2$Loan <- factor(bank2$Loan)
+```
+
+## Partition the Data
+
+The data was partitioned into 60% training data and 40% validation data.
+
+```{r}
+set.seed(1)
+
+train.index <- sample(1:nrow(bank2), 0.6 * nrow(bank2))
+
+train.df <- bank2[train.index, ]
+
+valid.df <- bank2[-train.index, ]
+```
+
+## A. Pivot Table
+
+```{r}
+table(train.df$CC, train.df$Loan, train.df$Online)
+```
+
+The pivot table shows the count of customers based on credit card ownership, loan acceptance, and online banking use.
+
+## B. Probability from Pivot Table
+
+```{r}
+subset.B <- train.df[train.df$CC == 1 & train.df$Online == 1, ]
+
+prop.table(table(subset.B$Loan))
+```
+
+The probability that a customer who has a bank credit card and actively uses online banking accepts the loan offer is **0.0911**, or **9.11%**.
+
+## C. Separate Pivot Tables
+
+### Loan by Online
+
+```{r}
+table(train.df$Loan, train.df$Online)
+```
+
+### Loan by Credit Card
+
+```{r}
+table(train.df$Loan, train.df$CC)
+```
+
+## D. Conditional Probabilities
+
+```{r}
+p.cc1.loan1 <- prop.table(table(train.df$CC[train.df$Loan == 1]))["1"]
+
+p.online1.loan1 <- prop.table(table(train.df$Online[train.df$Loan == 1]))["1"]
+
+p.loan1 <- prop.table(table(train.df$Loan))["1"]
+
+p.cc1.loan0 <- prop.table(table(train.df$CC[train.df$Loan == 0]))["1"]
+
+p.online1.loan0 <- prop.table(table(train.df$Online[train.df$Loan == 0]))["1"]
+
+p.loan0 <- prop.table(table(train.df$Loan))["0"]
+
+p.cc1.loan1
+p.online1.loan1
+p.loan1
+p.cc1.loan0
+p.online1.loan0
+p.loan0
+```
+
+The probabilities are:
+
+1. P(CC = 1 | Loan = 1) = **0.2800**
+2. P(Online = 1 | Loan = 1) = **0.6036**
+3. P(Loan = 1) = **0.0917**
+4. P(CC = 1 | Loan = 0) = **0.2939**
+5. P(Online = 1 | Loan = 0) = **0.5828**
+6. P(Loan = 0) = **0.9083**
+
+## E. Naive Bayes Probability
+
+```{r}
+numerator <- p.cc1.loan1 * p.online1.loan1 * p.loan1
+
+denominator <- numerator + 
+  (p.cc1.loan0 * p.online1.loan0 * p.loan0)
+
+nb.prob <- numerator / denominator
+
+nb.prob
+```
+
+The Naive Bayes probability is **0.0906**, or **9.06%**.
+
+## F. Comparison
+
+The probability from the pivot table was **0.0911**, while the Naive Bayes probability was **0.0906**.
+
+These values are very similar. The pivot table estimate is more direct because it uses the actual observed customers with CC = 1 and Online = 1. The Naive Bayes estimate uses conditional probabilities and assumes that the predictors are conditionally independent.
+
+## G. Naive Bayes Model
+
+```{r}
+nb.model <- naiveBayes(Loan ~ CC + Online, data = train.df)
+
+nb.model
+```
+
+```{r}
+new.customer <- data.frame(
+  CC = factor(1, levels = levels(train.df$CC)),
+  Online = factor(1, levels = levels(train.df$Online))
+)
+
+predict(nb.model, new.customer, type = "raw")
+```
+
+The model output gives:
+
+- Loan = 0: **0.9094**
+- Loan = 1: **0.0906**
+
+The entry for Loan = 1 corresponds to:
+
+P(Loan = 1 | CC = 1, Online = 1)
+
+This matches the manual Naive Bayes calculation from Part E.
+
+## Conclusion
+
+For a customer who owns a bank credit card and actively uses online banking services, the estimated probability of accepting the personal loan offer is about **9%**. The pivot table and Naive Bayes results are almost identical.
