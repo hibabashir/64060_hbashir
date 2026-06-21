@@ -1,0 +1,153 @@
+
+---
+title: "Cereals Hierarchical Clustering"
+author: "Mai Bashir"
+output: html_document
+---
+
+```{r setup, message=FALSE, warning=FALSE}
+library(cluster)
+```
+
+## Data Preprocessing
+
+```{r}
+cereals <- read.csv(file.choose())
+
+# Remove cereals with missing values
+cereals.clean <- na.omit(cereals)
+
+# Keep only numeric variables
+cereals.num <- cereals.clean[, sapply(cereals.clean, is.numeric)]
+
+# Normalize numeric variables
+cereals.norm <- scale(cereals.num)
+
+dim(cereals)
+dim(cereals.clean)
+```
+
+The original dataset had 77 cereals. After removing missing values, 74 cereals remained.
+
+## Hierarchical Clustering Using AGNES
+
+```{r}
+agnes.single <- agnes(cereals.norm, method = "single")
+agnes.complete <- agnes(cereals.norm, method = "complete")
+agnes.average <- agnes(cereals.norm, method = "average")
+agnes.ward <- agnes(cereals.norm, method = "ward")
+
+agnes.single$ac
+agnes.complete$ac
+agnes.average$ac
+agnes.ward$ac
+```
+
+Ward's method was selected because it had the highest agglomerative coefficient, 0.9046. This means Ward's method produced the strongest cluster structure compared with single, complete, and average linkage.
+
+## Dendrogram
+
+```{r}
+plot(agnes.ward, which.plots = 2)
+```
+
+## Choosing the Number of Clusters
+
+```{r}
+for(k in 2:6){
+  clusters.temp <- cutree(as.hclust(agnes.ward), k = k)
+  sil <- silhouette(clusters.temp, dist(cereals.norm))
+  cat("k =", k, "Average Silhouette =", mean(sil[,3]), "\n")
+}
+```
+
+Based on the silhouette results, 6 clusters were chosen because k = 6 had the highest average silhouette value, 0.2611.
+
+## Final Cluster Solution
+
+```{r}
+clusters <- cutree(as.hclust(agnes.ward), k = 6)
+
+cereals.clean$Cluster <- clusters
+
+table(cereals.clean$Cluster)
+```
+
+## Cluster Averages
+
+```{r}
+cluster.means <- aggregate(cereals.num,
+                           by = list(Cluster = cereals.clean$Cluster),
+                           mean)
+
+cluster.means
+```
+
+## Cereals in Each Cluster
+
+```{r}
+cereals.clean[, c("name", "Cluster")]
+```
+
+## Structure of the Clusters
+
+The six clusters represent different nutritional profiles. Cluster 1 contains very high-fiber cereals with the highest ratings. Cluster 3 contains many sugary cereals with low fiber and lower ratings. Cluster 5 contains many traditional cereals with moderate nutritional values. Cluster 6 contains cereals with low calories, very low fat, and very low sodium.
+
+Overall, the clusters are mainly separated by calories, sugar, sodium, fiber, protein, and rating.
+
+## Cluster Stability
+
+```{r}
+set.seed(123)
+
+# Create partition A and B
+n <- nrow(cereals.norm)
+partA <- sample(1:n, size = round(0.5 * n))
+partB <- setdiff(1:n, partA)
+
+dataA <- cereals.norm[partA, ]
+dataB <- cereals.norm[partB, ]
+
+# Cluster partition A using Ward
+agnes.A <- agnes(dataA, method = "ward")
+clusters.A <- cutree(as.hclust(agnes.A), k = 6)
+
+# Get centroids from partition A
+centroids.A <- aggregate(dataA,
+                         by = list(Cluster = clusters.A),
+                         mean)
+
+centroid.matrix <- as.matrix(centroids.A[, -1])
+
+# Assign partition B to closest centroid
+assign.cluster <- function(x, centroids){
+  distances <- apply(centroids, 1, function(center){
+    sum((x - center)^2)
+  })
+  return(which.min(distances))
+}
+
+assigned.B <- apply(dataB, 1, assign.cluster, centroids = centroid.matrix)
+
+assigned.B
+```
+
+To assess stability, the data were split into two partitions. Partition A was clustered, and its centroids were used to assign cereals in Partition B to the closest cluster. This checks whether the cluster structure from one part of the data applies to another part. The clusters were reasonably stable because Ward's method created compact groups, although some overlap is expected because the silhouette values were moderate.
+
+## Healthy Cereal Cluster
+
+Based on the cluster means, Cluster 1 is the healthiest cluster. It has the lowest calories, highest protein, highest fiber, low sugar, and the highest rating.
+
+The healthy cereals in Cluster 1 are:
+
+```{r}
+cereals.clean[cereals.clean$Cluster == 1, c("name", "calories", "protein", "fiber", "sugars", "sodium", "rating")]
+```
+
+Cluster 1 includes 100% Bran, All-Bran, and All-Bran with Extra Fiber. These cereals would be the best choice for elementary public schools because they support a healthier diet.
+
+## Should the Data Be Normalized?
+
+Yes, the data should be normalized before clustering because the variables are measured on different scales. For example, sodium and potassium have much larger values than fat, fiber, or protein. Without normalization, variables with larger values would dominate the Euclidean distance calculation.
+
+However, after clustering is complete, the original unnormalized values should be used to interpret the clusters and decide which cereals are healthiest.
