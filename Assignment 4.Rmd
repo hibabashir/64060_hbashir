@@ -1,0 +1,108 @@
+---
+title: "Assignment 4 - Cluster Analysis"
+author: "Hiba Bashir"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+# Cluster Analysis of Pharmaceutical Firms
+
+## Load the Data
+
+```{r}
+pharma <- read.csv(file.choose())
+
+head(pharma)
+str(pharma)
+```
+
+## a. Cluster the firms using numerical variables (1–9)
+
+```{r}
+pharma.num <- pharma[,3:11]
+
+head(pharma.num)
+```
+
+```{r}
+pharma.scaled <- scale(pharma.num)
+
+head(pharma.scaled)
+```
+
+The data were standardized because the variables are measured on different scales. This ensures that each variable contributes equally to the clustering analysis.
+
+```{r}
+library(factoextra)
+```
+
+```{r}
+fviz_nbclust(pharma.scaled, kmeans, method = "wss")
+```
+
+```{r}
+fviz_nbclust(pharma.scaled, kmeans, method = "silhouette")
+```
+
+```{r}
+set.seed(123)
+
+km.pharma <- kmeans(pharma.scaled,
+                    centers = 4,
+                    nstart = 25)
+
+km.pharma
+```
+
+The k-means algorithm was used because it is a non-hierarchical clustering method that groups similar observations. The variables were given equal weight after standardization. Based on the Elbow Method, four clusters were selected.
+
+## b. Interpret the clusters
+
+```{r}
+pharma$Cluster <- as.factor(km.pharma$cluster)
+
+aggregate(pharma.num,
+          by=list(Cluster=pharma$Cluster),
+          mean)
+```
+
+Cluster 1 contains large pharmaceutical companies with high profitability and strong financial performance.
+
+Cluster 2 contains stable companies with moderate financial performance and lower market risk.
+
+Cluster 3 contains smaller firms with higher leverage and stronger revenue growth.
+
+Cluster 4 contains firms with high P/E ratios but weaker profitability.
+
+## c. Patterns in variables 10–12
+
+```{r}
+table(pharma$Cluster, pharma$Median_Recommendation)
+
+table(pharma$Cluster, pharma$Location)
+
+table(pharma$Cluster, pharma$Exchange)
+```
+
+The recommendations are mixed across clusters, indicating no strong relationship between analyst recommendations and cluster membership.
+
+Most companies are headquartered in the United States, while the remaining firms are spread across several countries. Therefore, location does not strongly influence the clusters.
+
+Most firms are listed on the NYSE regardless of cluster membership. Only one company is listed on NASDAQ and one on AMEX, suggesting that stock exchange is not a major factor in the clustering.
+
+## d. Name each cluster
+
+- Cluster 1: Large High-Performance Firms
+- Cluster 2: Stable Established Firms
+- Cluster 3: High-Growth Higher-Risk Firms
+- Cluster 4: Low-Performance High P/E Firms
+
+## Conclusion
+
+K-means clustering grouped the 21 pharmaceutical firms into four distinct clusters based on nine financial variables. Standardizing the data ensured that all variables contributed equally. The results indicate that pharmaceutical companies differ primarily in market capitalization, profitability, leverage, growth, and financial performance.
+
+
+
+
